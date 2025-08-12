@@ -1,73 +1,67 @@
-# Welcome to your Lovable project
+# Sistema de Gerenciamento de Ordens de Serviço
 
-## Project info
+Este é um sistema para gerenciar ordens de serviço, permitindo o cadastro e acompanhamento de serviços, clientes e status. O projeto foi desenvolvido com uma arquitetura moderna, utilizando Supabase para o banco de dados e Vercel para o deploy contínuo.
 
-**URL**: https://lovable.dev/projects/e287011f-cfe6-49a5-9df8-7fe450c466f1
+## Tecnologias Utilizadas
 
-## How can I edit this code?
+* **Node.js**: Ambiente de execução JavaScript no servidor.
+* **Supabase**: Backend-as-a-Service (BaaS) que oferece um banco de dados PostgreSQL, autenticação e APIs em tempo real.
+* **Vercel**: Plataforma de hosting para deploy contínuo.
+* **Git & GitHub**: Controle de versão e hospedagem do repositório.
 
-There are several ways of editing your application.
+## Instalação e Configuração
 
-**Use Lovable**
+Siga os passos abaixo para ter uma cópia do projeto em execução na sua máquina local para desenvolvimento e testes.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e287011f-cfe6-49a5-9df8-7fe450c466f1) and start prompting.
+### Pré-requisitos
 
-Changes made via Lovable will be committed automatically to this repo.
+Certifique-se de ter o [Node.js](https://nodejs.org/en/) e o [Git](https://git-scm.com/) instalados em sua máquina.
 
-**Use your preferred IDE**
+### Passos
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1.  **Clone o Repositório:**
+    Abra seu terminal e execute o comando para clonar o projeto:
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+    ```bash
+    git clone [https://github.com/Vitor-Studzieski/SistemaOrdemDeServico.git](https://github.com/Vitor-Studzieski/SistemaOrdemDeServico.git)
+    ```
 
-Follow these steps:
+2.  **Navegue até o Diretório:**
+    Entre na pasta do projeto que acabou de ser clonada:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+    ```bash
+    cd SistemaOrdemDeServico
+    ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3.  **Instale as Dependências:**
+    Instale todos os pacotes e bibliotecas necessárias para o projeto:
 
-# Step 3: Install the necessary dependencies.
-npm i
+    ```bash
+    npm i
+    ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+4.  **Configuração do Supabase:**
+    Crie um arquivo `.env` na raiz do projeto e configure as variáveis de ambiente necessárias para a conexão com o Supabase:
 
-**Edit a file directly in GitHub**
+    ```env
+    # Exemplo:
+    SUPABASE_URL=sua_url_do_supabase
+    SUPABASE_KEY=sua_chave_de_anon_do_supabase
+    ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+5.  **Inicie o Servidor de Desenvolvimento:**
+    Inicie o servidor local para começar a trabalhar no projeto. Ele estará disponível em `http://localhost:8080/`.
 
-**Use GitHub Codespaces**
+    ```bash
+    npm run dev
+    ```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Como Usar
 
-## What technologies are used for this project?
+O projeto pode ser acessado através da interface web, permitindo a criação, visualização e atualização de ordens de serviço.
 
-This project is built with:
+## Deploy
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Este projeto está configurado com [Vercel](https://vercel.com/) para deploy contínuo. Qualquer novo commit na branch `main` será automaticamente deployado.
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/e287011f-cfe6-49a5-9df8-7fe450c466f1) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+---
