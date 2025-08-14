@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Search, Filter, CheckCircle2, Clock, AlertTriangle, FileText, Edit, Eye, Download } from "lucide-react";
+import { ArrowLeft, Search, CheckCircle2, Clock, AlertTriangle, FileText, Edit, Eye, Download } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
@@ -124,22 +124,6 @@ const Orders = () => {
     }
   };
 
-  const filteredOrdens = ordens.filter((ordem) => {
-    const matchesSearch = ordem.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          ordem.responsavel.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "todas" || ordem.status === filterStatus;
-    const matchesSetor = filterSetor === "todos" || ordem.setor === filterSetor;
-    
-    return matchesSearch && matchesStatus && matchesSetor;
-  });
-
-  const ordensStats = {
-    todas: ordens.length,
-    pendentes: ordens.filter((o) => o.status === 'pendente').length,
-    concluidas: ordens.filter((o) => o.status === 'concluida').length,
-    atrasadas: ordens.filter((o) => o.status === 'atrasada').length
-  };
-
   const downloadOrdemPlanilha = (ordem) => {
     const dadosOrdem = [
       ['ORDEM DE SERVIÇO', ''],
@@ -193,6 +177,22 @@ const Orders = () => {
 
   const handleEditarOrdem = (ordemId) => {
     navigate(`/edit-order/${ordemId}`);
+  };
+
+  const filteredOrdens = ordens.filter((ordem) => {
+    const matchesSearch = ordem.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          ordem.responsavel.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === "todas" || ordem.status === filterStatus;
+    const matchesSetor = filterSetor === "todos" || ordem.setor === filterSetor;
+    
+    return matchesSearch && matchesStatus && matchesSetor;
+  });
+
+  const ordensStats = {
+    todas: ordens.length,
+    pendentes: ordens.filter((o) => o.status === 'pendente').length,
+    concluidas: ordens.filter((o) => o.status === 'concluida').length,
+    atrasadas: ordens.filter((o) => o.status === 'atrasada').length
   };
 
   const renderOrderCard = (ordem) => (
@@ -286,28 +286,6 @@ const Orders = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link to="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-          </Link>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">Ordens de Serviço</h1>
-            <p className="text-sm text-gray-600">Gerencie e acompanhe todas as ordens de serviço</p>
-          </div>
-          <Link to="/create-os">
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <FileText className="w-4 h-4 mr-2" />
-              Nova OS
-            </Button>
-          </Link>
-        </div>
-      </header>
-
       <div className="p-6 max-w-7xl mx-auto">
         {/* Filtros e Busca */}
         <Card className="mb-6">

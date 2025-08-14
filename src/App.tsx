@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -16,6 +15,7 @@ import Indicators from "./pages/Indicators";
 import ViewOrder from "./pages/ViewOrder";
 import EditOrder from "./pages/EditOrder";
 import Users from "./pages/Users";
+import PopsManuais from "./pages/PopsManuais"; // <-- Importado o novo componente
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +48,7 @@ function AppRoutes() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/quality-control" element={<Indicators />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/pops-manuais" element={<PopsManuais />} /> {/* <-- Adicionada a nova rota */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>

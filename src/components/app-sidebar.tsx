@@ -7,7 +7,8 @@ import {
   Users, 
   Settings,
   LogOut,
-  Plus
+  Plus,
+  BookOpen // <-- Adicionei a importação do novo ícone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,6 +60,11 @@ const items = [
     url: "/users",
     icon: Users,
   },
+  {
+    title: "POPs e Manuais",
+    url: "/pops-manuais",
+    icon: BookOpen,
+  },
 ];
 
 export function AppSidebar() {
@@ -66,8 +72,8 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const { signOut, user } = useAuth();
 
-  const isActive = (path: string) => currentPath === path;
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
+  const isActive = (path) => currentPath === path;
+  const getNavCls = ({ isActive }) =>
     isActive ? "bg-emerald-600 text-white border-r-2 border-emerald-400" : "text-slate-300 hover:bg-slate-800 hover:text-white";
 
   const handleSignOut = async () => {
