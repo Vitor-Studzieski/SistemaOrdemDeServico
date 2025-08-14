@@ -28,7 +28,7 @@ const Orders = () => {
         .select("*, service_order_parameters(*)")
         .order("criado_em", { ascending: false });
       if (error) throw error;
-      return (data || []).map((o: any) => ({
+      return (data || []).map((o) => ({
         id: o.id,
         titulo: o.titulo,
         descricao: o.descricao,
@@ -38,7 +38,7 @@ const Orders = () => {
         responsavel: o.responsavel,
         criado: o.criado_em,
         prazo: o.prazo,
-        parametros: (o.service_order_parameters || []).map((p: any) => ({
+        parametros: (o.service_order_parameters || []).map((p) => ({
           nome: p.nome,
           valor: "-",
           limite: `${p.valor_minimo ?? ''}-${p.valor_maximo ?? ''} ${p.unidade ?? ''}`.trim(),
@@ -51,33 +51,40 @@ const Orders = () => {
   const queryClient = useQueryClient();
   const concluirMut = useMutation({
     mutationFn: async (ordemId: string) => {
-      console.log('Tentando concluir ordem:', ordemId);
       const { data, error } = await supabase
         .from("service_orders")
         .update({ status: "concluida" })
         .eq("id", ordemId)
-        .select();
+        .select("*");
       
       if (error) {
-        console.error('Erro ao atualizar ordem:', error);
         throw error;
       }
       
-      console.log('Ordem atualizada com sucesso:', data);
-      return ordemId;
+      return data[0];
     },
-    onSuccess: (ordemId: string) => {
-      console.log('Mutação bem-sucedida para ordem:', ordemId);
-      // Atualiza o cache para o botão de download aparecer imediatamente
+    onSuccess: (updatedOrder) => {
+      const allOrders = queryClient.getQueryData(["service_orders"]);
+      const oldOrder = Array.isArray(allOrders) ? allOrders.find(o => o.id === updatedOrder.id) : undefined;
+      
       queryClient.setQueryData(["service_orders"], (oldData: any) => {
         if (!Array.isArray(oldData)) return oldData;
-        return oldData.map((o: any) => (o.id === ordemId ? { ...o, status: "concluida" } : o));
+        return oldData.map((o) => (o.id === updatedOrder.id ? {
+          ...o, 
+          status: "concluida"
+        } : o));
       });
+      
       queryClient.invalidateQueries({ queryKey: ["service_orders"] });
+      
       toast({
         title: "Ordem concluída!",
         description: "A ordem de serviço foi marcada como concluída.",
       });
+
+      if (oldOrder) {
+        downloadOrdemPlanilha(oldOrder);
+      }
     },
     onError: (error) => {
       console.error('Erro na mutação:', error);
@@ -89,7 +96,7 @@ const Orders = () => {
     },
   });
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status) => {
     switch (status) {
       case 'concluida': return 'bg-green-100 text-green-800 border-green-200';
       case 'pendente': return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -98,7 +105,7 @@ const Orders = () => {
     }
   };
 
-  const getPriorityColor = (prioridade: string) => {
+  const getPriorityColor = (prioridade) => {
     switch (prioridade) {
       case 'critica': return 'bg-red-500 text-white';
       case 'alta': return 'bg-orange-500 text-white';
@@ -108,7 +115,7 @@ const Orders = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status) => {
     switch (status) {
       case 'concluida': return <CheckCircle2 className="w-4 h-4" />;
       case 'pendente': return <Clock className="w-4 h-4" />;
@@ -117,9 +124,9 @@ const Orders = () => {
     }
   };
 
-  const filteredOrdens = ordens.filter((ordem: any) => {
+  const filteredOrdens = ordens.filter((ordem) => {
     const matchesSearch = ordem.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ordem.responsavel.toLowerCase().includes(searchTerm.toLowerCase());
+                          ordem.responsavel.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "todas" || ordem.status === filterStatus;
     const matchesSetor = filterSetor === "todos" || ordem.setor === filterSetor;
     
@@ -128,12 +135,12 @@ const Orders = () => {
 
   const ordensStats = {
     todas: ordens.length,
-    pendentes: ordens.filter((o: any) => o.status === 'pendente').length,
-    concluidas: ordens.filter((o: any) => o.status === 'concluida').length,
-    atrasadas: ordens.filter((o: any) => o.status === 'atrasada').length
+    pendentes: ordens.filter((o) => o.status === 'pendente').length,
+    concluidas: ordens.filter((o) => o.status === 'concluida').length,
+    atrasadas: ordens.filter((o) => o.status === 'atrasada').length
   };
 
-  const downloadOrdemPlanilha = (ordem: any) => {
+  const downloadOrdemPlanilha = (ordem) => {
     const dadosOrdem = [
       ['ORDEM DE SERVIÇO', ''],
       ['', ''],
@@ -152,9 +159,16 @@ const Orders = () => {
       ['', '']
     ];
 
-    if (ordem.parametros.length > 0) {
+    const parametros = ordem.parametros.map((p) => ({
+      nome: p.nome,
+      valor: p.valor,
+      limite: p.limite,
+      status: p.status,
+    }));
+
+    if (parametros.length > 0) {
       dadosOrdem.push(['Parâmetro', 'Valor', 'Limite', 'Status']);
-      ordem.parametros.forEach((param: any) => {
+      parametros.forEach((param) => {
         dadosOrdem.push([param.nome, param.valor ?? '-', param.limite ?? '-', param.status ?? '-']);
       });
     } else {
@@ -169,20 +183,19 @@ const Orders = () => {
     XLSX.writeFile(wb, nomeArquivo);
   };
 
-  const handleConcluirOrdem = (ordemId: string) => {
-    console.log('Iniciando conclusão da ordem:', ordemId, typeof ordemId);
+  const handleConcluirOrdem = (ordemId) => {
     concluirMut.mutate(ordemId);
   };
 
-  const handleVisualizarOrdem = (ordemId: string) => {
+  const handleVisualizarOrdem = (ordemId) => {
     navigate(`/view-order/${ordemId}`);
   };
 
-  const handleEditarOrdem = (ordemId: string) => {
+  const handleEditarOrdem = (ordemId) => {
     navigate(`/edit-order/${ordemId}`);
   };
 
-  const renderOrderCard = (ordem: any) => (
+  const renderOrderCard = (ordem) => (
     <Card key={ordem.id} className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
@@ -214,7 +227,7 @@ const Orders = () => {
           <div className="mb-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Parâmetros Monitorados:</h4>
             <div className="flex flex-wrap gap-2">
-              {ordem.parametros.map((param: any, index: number) => (
+              {ordem.parametros.map((param, index) => (
                 <div key={index} className="bg-green-50 border border-green-200 rounded px-3 py-1 text-sm">
                   <span className="font-medium">{param.nome}:</span> {param.valor} 
                   <span className="text-gray-500 ml-1">({param.limite})</span>
@@ -359,25 +372,25 @@ const Orders = () => {
 
           <TabsContent value="todas" className="mt-6">
             <div className="space-y-4">
-              {filteredOrdens.map((ordem: any) => renderOrderCard(ordem))}
+              {filteredOrdens.map((ordem) => renderOrderCard(ordem))}
             </div>
           </TabsContent>
 
           <TabsContent value="pendentes">
             <div className="space-y-4">
-              {filteredOrdens.filter((o: any) => o.status === 'pendente').map((ordem: any) => renderOrderCard(ordem))}
+              {filteredOrdens.filter((o) => o.status === 'pendente').map((ordem) => renderOrderCard(ordem))}
             </div>
           </TabsContent>
 
           <TabsContent value="concluidas">
             <div className="space-y-4">
-              {filteredOrdens.filter((o: any) => o.status === 'concluida').map((ordem: any) => renderOrderCard(ordem))}
+              {filteredOrdens.filter((o) => o.status === 'concluida').map((ordem) => renderOrderCard(ordem))}
             </div>
           </TabsContent>
 
           <TabsContent value="atrasadas">
             <div className="space-y-4">
-              {filteredOrdens.filter((o: any) => o.status === 'atrasada').map((ordem: any) => (
+              {filteredOrdens.filter((o) => o.status === 'atrasada').map((ordem) => (
                 <div key={ordem.id} className="border-l-4 border-l-red-500">
                   {renderOrderCard(ordem)}
                 </div>
