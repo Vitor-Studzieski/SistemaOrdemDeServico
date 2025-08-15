@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,53 +10,17 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const Reports = () => {
-  const [mesAno, setMesAno] = useState<Date>(new Date());
-  const [setor, setSetor] = useState("todos");
+  const [mesAno, setMesAno] = useState(new Date());
+  const [setor, setSetor] = useState("Todos os Setores");
   const [tipoRelatorio, setTipoRelatorio] = useState("completo");
 
-  // Mock data - em produção viria do backend
-  const relatoriosGerados = [
-    {
-      id: 1,
-      periodo: "Junho/2025",
-      tipo: "Relatório Completo",
-      setor: "Todos os Setores",
-      gerado: "2025-07-01",
-      status: "concluido",
-      osTotal: 42,
-      osCompletas: 38,
-      naoConformidades: 4,
-      conformidade: 90.5
-    },
-    {
-      id: 2,
-      periodo: "Maio/2025",
-      tipo: "Relatório por Setor",
-      setor: "Produção A",
-      gerado: "2025-06-01",
-      status: "concluido",
-      osTotal: 28,
-      osCompletas: 26,
-      naoConformidades: 2,
-      conformidade: 92.9
-    },
-    {
-      id: 3,
-      periodo: "Maio/2025",
-      tipo: "Relatório Completo",
-      setor: "Todos os Setores",
-      gerado: "2025-06-01",
-      status: "concluido",
-      osTotal: 45,
-      osCompletas: 41,
-      naoConformidades: 4,
-      conformidade: 91.1
-    }
-  ];
-
+  // Mock data para as estatísticas - O valor do resumo não vem do banco
   const dados = {
     osExecutadas: 38,
     osTotal: 42,
@@ -75,33 +38,84 @@ const Reports = () => {
     { setor: "Laboratório", total: 1, criticas: 1, menores: 0 }
   ];
 
+  // Buscando histórico de relatórios do Supabase
+  const { data: relatoriosGerados = [], isLoading, error: fetchError } = useQuery({
+    queryKey: ["reports_history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reports_history")
+        .select("*")
+        .order("data_geracao", { ascending: false });
+      if (error) {
+        console.error("Erro ao buscar relatórios:", error);
+        return [];
+      }
+      return data;
+    },
+  });
+
+  const queryClient = useQueryClient();
+  const generateReportMut = useMutation({
+    mutationFn: async (newReport) => {
+      const { data, error } = await supabase
+        .from("reports_history")
+        .insert([newReport])
+        .select();
+      if (error) {
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports_history"] });
+      toast({
+        title: "Relatório Gerado!",
+        description: `O relatório para ${format(mesAno, "MMMM/yyyy", { locale: ptBR })} foi salvo no histórico.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao gerar relatório",
+        description: `Ocorreu um erro: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleGerarRelatorio = () => {
-    toast({
-      title: "Relatório Gerado!",
-      description: `Relatório de ${format(mesAno, "MMMM/yyyy", { locale: ptBR })} foi gerado com sucesso.`,
-    });
-    
-    // Simular geração do relatório
-    console.log("Gerando relatório:", {
+    const newReport = {
       periodo: format(mesAno, "MMMM/yyyy", { locale: ptBR }),
-      setor,
-      tipo: tipoRelatorio
-    });
+      setor: setor,
+      tipo: tipoRelatorio,
+      osTotal: dados.osTotal,
+      osCompletas: dados.osExecutadas,
+      naoConformidades: dados.naoConformidades,
+      conformidade: dados.conformidade,
+    };
+    generateReportMut.mutate(newReport);
   };
 
-  const handleDownload = (relatorioId: number) => {
+  const handleDownload = (relatorioId) => {
     toast({
       title: "Download iniciado",
       description: "O relatório está sendo baixado em PDF.",
     });
   };
 
-  const handlePrint = (relatorioId: number) => {
+  const handlePrint = (relatorioId) => {
     toast({
       title: "Impressão iniciada",
       description: "O relatório está sendo enviado para impressão.",
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -162,19 +176,11 @@ const Reports = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Setor</label>
-                <Select value={setor} onValueChange={setSetor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o setor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os Setores</SelectItem>
-                    <SelectItem value="producao-a">Produção A</SelectItem>
-                    <SelectItem value="producao-b">Produção B</SelectItem>
-                    <SelectItem value="estoque">Estoque</SelectItem>
-                    <SelectItem value="laboratorio">Laboratório</SelectItem>
-                    <SelectItem value="qualidade">Qualidade</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input 
+                  value={setor} 
+                  onChange={(e) => setSetor(e.target.value)} 
+                  placeholder="Digite o setor" 
+                />
               </div>
 
               <div className="space-y-2">
@@ -285,7 +291,7 @@ const Reports = () => {
                       <FileText className="w-5 h-5 text-blue-600" />
                       <h3 className="font-medium text-gray-900">{relatorio.tipo}</h3>
                       <Badge className="bg-green-100 text-green-800 border-green-200">
-                        {relatorio.status === 'concluido' ? 'Concluído' : 'Processando'}
+                        Concluído
                       </Badge>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
@@ -296,7 +302,7 @@ const Reports = () => {
                         <span className="font-medium">Setor:</span> {relatorio.setor}
                       </div>
                       <div>
-                        <span className="font-medium">Gerado:</span> {new Date(relatorio.gerado).toLocaleDateString('pt-BR')}
+                        <span className="font-medium">Gerado:</span> {new Date(relatorio.data_geracao).toLocaleDateString('pt-BR')}
                       </div>
                       <div>
                         <span className="font-medium">Conformidade:</span> {relatorio.conformidade}%
@@ -309,23 +315,11 @@ const Reports = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <Button variant="outline" size="sm">
-                      <Eye className="w-4 h-4 mr-1" />
-                      Visualizar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(relatorio.id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleDownload(relatorio.id)}>
                       <Download className="w-4 h-4 mr-1" />
                       PDF
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePrint(relatorio.id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handlePrint(relatorio.id)}>
                       <Printer className="w-4 h-4 mr-1" />
                       Imprimir
                     </Button>
