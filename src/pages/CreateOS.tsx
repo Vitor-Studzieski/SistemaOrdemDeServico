@@ -57,7 +57,6 @@ const schemaChecklist = z.object({
   mes: z.string().min(1, "Mês é obrigatório"),
   verificador: z.string().min(1, "Verificador é obrigatório"),
   data: z.string().min(1, "Data é obrigatória"),
-  // Adicione campos para o checklist aqui, se necessário
   nao_conformidades: z.string().optional(),
   acao_corretiva: z.string().optional(),
   motivo_nc: z.string().optional(),
@@ -98,6 +97,18 @@ const schemaResiduos = z.object({
   observacoes: z.string().optional(),
 });
 
+const schemaTemperatura = z.object({
+  ...commonFields,
+  frequencia: z.string().min(1, "Frequência é obrigatória"),
+  data_hora: z.string().min(1, "Data e Hora são obrigatórios"),
+  umidade: z.string().min(1, "Umidade é obrigatória"),
+  temperatura: z.string().min(1, "Temperatura é obrigatória"),
+  nao_conformidades: z.string().optional(),
+  acoes_corretivas: z.string().optional(),
+  medidas_preventivas: z.string().optional(),
+  resp: z.string().min(1, "Responsável é obrigatório"),
+});
+
 const formSchemas = {
   "higienizacao": schemaHigienizacao,
   "recebimento": schemaRecebimento,
@@ -105,6 +116,7 @@ const formSchemas = {
   "pragas": schemaPragas,
   "treinamento": schemaTreinamento,
   "residuos": schemaResiduos,
+  "temperatura": schemaTemperatura,
 };
 
 const CreateOS = () => {
@@ -116,7 +128,6 @@ const CreateOS = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Resetar o formulário quando o tipo de formulário muda
   useEffect(() => {
     form.reset();
   }, [formType, form.reset]);
@@ -173,6 +184,10 @@ const CreateOS = () => {
             titulo = `Retirada de Resíduos - Mês: ${values.mes}`;
             descricao = `Responsável: ${values.responsavel}. Data: ${values.data}.`;
             break;
+        case "temperatura":
+            titulo = `Registro de Temperatura e Umidade - Setor: ${values.setor}`;
+            descricao = `Umidade: ${values.umidade}%. Temperatura: ${values.temperatura}°C.`;
+            break;
         default:
             titulo = "Nova Ordem de Serviço";
             descricao = "Detalhes não especificados.";
@@ -188,7 +203,7 @@ const CreateOS = () => {
       setor: values.setor,
       prioridade: values.prioridade,
       prazo: values.prazo,
-      form_data: values, // <-- Envia os dados dinâmicos
+      form_data: values,
     };
 
     createOrderMut.mutate(orderData);
@@ -509,20 +524,20 @@ const CreateOS = () => {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="data"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+            <FormField
+              control={form.control}
+              name="data"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             {/* Campos do checklist */}
             <h3 className="font-semibold mt-4">Checklist de Higiene</h3>
             <FormField
@@ -798,6 +813,119 @@ const CreateOS = () => {
             />
           </>
         )}
+        
+        {formType === "temperatura" && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="frequencia"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frequência</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Diário" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="data_hora"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data e Hora</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="umidade"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Umidade (%)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 50" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="temperatura"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Temperatura (°C)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Ex: 25" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+                control={form.control}
+                name="nao_conformidades"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição das Não-Conformidades</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Descreva as não-conformidades" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            <FormField
+              control={form.control}
+              name="acoes_corretivas"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ações Corretivas</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva as ações corretivas" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="medidas_preventivas"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Medidas Preventivas</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva as medidas preventivas" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="resp"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Resp.</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Responsável" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
       </>
     );
   };
@@ -836,6 +964,7 @@ const CreateOS = () => {
                 <SelectItem value="pragas">Controle de Ocorrência de Pragas</SelectItem>
                 <SelectItem value="treinamento">Registro de Treinamento</SelectItem>
                 <SelectItem value="residuos">Retiradas de Resíduos</SelectItem>
+                <SelectItem value="temperatura">Registro de Temperatura e Umidade</SelectItem>
               </SelectContent>
             </Select>
           </CardContent>

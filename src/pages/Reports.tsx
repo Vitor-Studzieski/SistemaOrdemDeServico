@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, FileText, Download, Printer, Calendar as CalendarIcon, Eye, TrendingUp, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, FileText, Download, Printer, Calendar as CalendarIcon, Eye, TrendingUp, AlertTriangle, Trash } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -19,8 +20,9 @@ const Reports = () => {
   const [mesAno, setMesAno] = useState(new Date());
   const [setor, setSetor] = useState("Todos os Setores");
   const [tipoRelatorio, setTipoRelatorio] = useState("completo");
+  const [visualizingReport, setVisualizingReport] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Mock data para as estatísticas - O valor do resumo não vem do banco
   const dados = {
     osExecutadas: 38,
     osTotal: 42,
@@ -38,7 +40,6 @@ const Reports = () => {
     { setor: "Laboratório", total: 1, criticas: 1, menores: 0 }
   ];
 
-  // Buscando histórico de relatórios do Supabase
   const { data: relatoriosGerados = [], isLoading, error: fetchError } = useQuery({
     queryKey: ["reports_history"],
     queryFn: async () => {
@@ -55,6 +56,7 @@ const Reports = () => {
   });
 
   const queryClient = useQueryClient();
+  
   const generateReportMut = useMutation({
     mutationFn: async (newReport) => {
       const { data, error } = await supabase
@@ -82,6 +84,33 @@ const Reports = () => {
     },
   });
 
+  const deleteReportMut = useMutation({
+    mutationFn: async (relatorioId) => {
+      const { error } = await supabase
+        .from("reports_history")
+        .delete()
+        .eq("id", relatorioId);
+      if (error) {
+        throw error;
+      }
+      return relatorioId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports_history"] });
+      toast({
+        title: "Relatório excluído!",
+        description: "O relatório foi removido do histórico com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao excluir relatório",
+        description: `Ocorreu um erro: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleGerarRelatorio = () => {
     const newReport = {
       periodo: format(mesAno, "MMMM/yyyy", { locale: ptBR }),
@@ -95,10 +124,21 @@ const Reports = () => {
     generateReportMut.mutate(newReport);
   };
 
-  const handleDownload = (relatorioId) => {
+  const handleView = (relatorio) => {
+    setVisualizingReport(relatorio);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (relatorioId) => {
+    deleteReportMut.mutate(relatorioId);
+  };
+
+  // Função de download do PDF com placeholder
+  const downloadPDF = (relatorio) => {
     toast({
-      title: "Download iniciado",
-      description: "O relatório está sendo baixado em PDF.",
+      title: "Recurso em desenvolvimento",
+      description: "A funcionalidade de download de PDF está sendo implementada.",
+      variant: "destructive",
     });
   };
 
@@ -315,13 +355,21 @@ const Reports = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <Button variant="outline" size="sm" onClick={() => handleDownload(relatorio.id)}>
+                    <Button variant="outline" size="sm" onClick={() => handleView(relatorio)}>
+                      <Eye className="w-4 h-4 mr-1" />
+                      Visualizar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => downloadPDF(relatorio)}>
                       <Download className="w-4 h-4 mr-1" />
                       PDF
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handlePrint(relatorio.id)}>
-                      <Printer className="w-4 h-4 mr-1" />
-                      Imprimir
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleDelete(relatorio.id)}
+                      className="text-red-500 hover:bg-red-50"
+                    >
+                      <Trash className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -343,6 +391,45 @@ const Reports = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[800px] p-6">
+          <DialogHeader>
+            <DialogTitle>Visualizar Relatório</DialogTitle>
+            <DialogDescription>
+              Detalhes do relatório gerado.
+            </DialogDescription>
+          </DialogHeader>
+          {visualizingReport && (
+            <div className="space-y-4 text-sm mt-4">
+              <div className="grid grid-cols-2 gap-2">
+                <p><strong>Período:</strong> {visualizingReport.periodo}</p>
+                <p><strong>Setor:</strong> {visualizingReport.setor}</p>
+                <p><strong>Tipo:</strong> {visualizingReport.tipo}</p>
+                <p><strong>Gerado em:</strong> {new Date(visualizingReport.data_geracao).toLocaleDateString('pt-BR')}</p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mt-4">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <div className="font-bold">{visualizingReport.osTotal}</div>
+                  <div className="text-xs text-blue-700">OS Totais</div>
+                </div>
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <div className="font-bold">{visualizingReport.osCompletas}</div>
+                  <div className="text-xs text-green-700">OS Concluídas</div>
+                </div>
+                <div className="p-2 bg-red-50 rounded-lg">
+                  <div className="font-bold">{visualizingReport.naoConformidades}</div>
+                  <div className="text-xs text-red-700">Não-Conformidades</div>
+                </div>
+                <div className="p-2 bg-green-50 rounded-lg">
+                  <div className="font-bold">{visualizingReport.conformidade}%</div>
+                  <div className="text-xs text-green-700">Conformidade</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
