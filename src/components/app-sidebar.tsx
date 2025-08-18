@@ -85,7 +85,7 @@ export function AppSidebar() {
       className="w-64"
       variant="sidebar"
     >
-      <div className="p-6">
+      <div className="p-6 bg-slate-900">
         <h2 className="text-xl font-semibold text-white">OSActive</h2>
       </div>
 

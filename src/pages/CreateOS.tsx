@@ -22,41 +22,43 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 // Definições dos esquemas de validação para cada tipo de planilha
-const commonFields = {
-    setor: z.string().min(1, "Setor é obrigatório"),
-    responsavel: z.string().min(1, "Responsável é obrigatório"),
-    prioridade: z.string().min(1, "Prioridade é obrigatória"),
-    prazo: z.string().min(1, "Prazo é obrigatório"),
-};
-
 const schemaHigienizacao = z.object({
-  ...commonFields,
-  mes: z.string().min(1, "Mês é obrigatório"),
-  ass: z.string().min(1, "Assinatura é obrigatória"),
-  data: z.string().min(1, "Data é obrigatória"),
-  produto_status: z.string().min(1, "Produto/Status é obrigatório"),
-  quantidade: z.string().min(1, "Quantidade é obrigatória"),
-  destino_pessoa: z.string().min(1, "Destino/Pessoa é obrigatório"),
+  setor: z.string().min(1, "Setor é obrigatório"),
+  responsavel: z.string().min(1, "Responsável é obrigatório"),
+  prioridade: z.string().min(1, "Prioridade é obrigatória"),
+  prazo: z.string().min(1, "Prazo é obrigatório"),
+  mes: z.string().optional(),
+  ass: z.string().optional(),
+  data: z.string().optional(),
+  produto_status: z.string().optional(),
+  quantidade: z.string().optional(),
+  destino_pessoa: z.string().optional(),
   observacoes: z.string().optional(),
 });
 
 const schemaRecebimento = z.object({
-  ...commonFields,
-  mes: z.string().min(1, "Mês é obrigatório"),
-  ass: z.string().min(1, "Assinatura é obrigatória"),
-  data: z.string().min(1, "Data é obrigatória"),
-  produto_recebido_status: z.string().min(1, "Produto recebido/Status é obrigatório"),
-  quantidade: z.string().min(1, "Quantidade é obrigatória"),
-  fornecedor: z.string().min(1, "Fornecedor é obrigatório"),
-  lote: z.string().min(1, "Lote é obrigatório"),
+  setor: z.string().min(1, "Setor é obrigatório"),
+  responsavel: z.string().min(1, "Responsável é obrigatório"),
+  prioridade: z.string().min(1, "Prioridade é obrigatória"),
+  prazo: z.string().min(1, "Prazo é obrigatório"),
+  mes: z.string().optional(),
+  ass: z.string().optional(),
+  data: z.string().optional(),
+  produto_recebido_status: z.string().optional(),
+  quantidade: z.string().optional(),
+  fornecedor: z.string().optional(),
+  lote: z.string().optional(),
   observacoes: z.string().optional(),
 });
 
 const schemaChecklist = z.object({
-  ...commonFields,
-  mes: z.string().min(1, "Mês é obrigatório"),
-  verificador: z.string().min(1, "Verificador é obrigatório"),
-  data: z.string().min(1, "Data é obrigatória"),
+  setor: z.string().min(1, "Setor é obrigatório"),
+  responsavel: z.string().min(1, "Responsável é obrigatório"),
+  prioridade: z.string().min(1, "Prioridade é obrigatória"),
+  prazo: z.string().min(1, "Prazo é obrigatório"),
+  mes: z.string().optional(),
+  verificador: z.string().optional(),
+  data: z.string().optional(),
   nao_conformidades: z.string().optional(),
   acao_corretiva: z.string().optional(),
   motivo_nc: z.string().optional(),
@@ -64,12 +66,15 @@ const schemaChecklist = z.object({
 });
 
 const schemaPragas = z.object({
-  ...commonFields,
-  frequencia: z.string().min(1, "Frequência é obrigatória"),
-  data: z.string().min(1, "Data é obrigatória"),
-  local: z.string().min(1, "Local é obrigatório"),
-  tipos_praga: z.string().min(1, "Tipos de praga é obrigatório"),
-  quantidade: z.string().min(1, "Quantidade é obrigatória"),
+  setor: z.string().min(1, "Setor é obrigatório"),
+  responsavel: z.string().min(1, "Responsável é obrigatório"),
+  prioridade: z.string().min(1, "Prioridade é obrigatória"),
+  prazo: z.string().min(1, "Prazo é obrigatório"),
+  frequencia: z.string().optional(),
+  data: z.string().optional(),
+  local: z.string().optional(),
+  tipos_praga: z.string().optional(),
+  quantidade: z.string().optional(),
   comunicado_responsavel: z.string().optional(),
   prov_cliente: z.string().optional(),
   prov_dedetizadora: z.string().optional(),
@@ -77,36 +82,45 @@ const schemaPragas = z.object({
 });
 
 const schemaTreinamento = z.object({
-  ...commonFields,
-  frequencia: z.string().min(1, "Frequência é obrigatória"),
-  evento: z.string().min(1, "Evento é obrigatório"),
-  periodo: z.string().min(1, "Período é obrigatório"),
-  local: z.string().min(1, "Local é obrigatório"),
-  instrutor: z.string().min(1, "Instrutor é obrigatório"),
-  conteudo_treinamento: z.string().min(1, "Conteúdo do treinamento é obrigatório"),
+  setor: z.string().min(1, "Setor é obrigatório"),
+  responsavel: z.string().min(1, "Responsável é obrigatório"),
+  prioridade: z.string().min(1, "Prioridade é obrigatória"),
+  prazo: z.string().min(1, "Prazo é obrigatório"),
+  frequencia: z.string().optional(),
+  evento: z.string().optional(),
+  periodo: z.string().optional(),
+  local: z.string().optional(),
+  instrutor: z.string().optional(),
+  conteudo_treinamento: z.string().optional(),
 });
 
 const schemaResiduos = z.object({
-  ...commonFields,
-  mes: z.string().min(1, "Mês é obrigatório"),
-  ass: z.string().min(1, "Assinatura é obrigatória"),
-  data: z.string().min(1, "Data é obrigatória"),
-  produto_status: z.string().min(1, "Produto/Status é obrigatório"),
-  quantidade: z.string().min(1, "Quantidade é obrigatória"),
-  destino_pessoa: z.string().min(1, "Destino/Pessoa é obrigatório"),
+  setor: z.string().min(1, "Setor é obrigatório"),
+  responsavel: z.string().min(1, "Responsável é obrigatório"),
+  prioridade: z.string().min(1, "Prioridade é obrigatória"),
+  prazo: z.string().min(1, "Prazo é obrigatório"),
+  mes: z.string().optional(),
+  ass: z.string().optional(),
+  data: z.string().optional(),
+  produto_status: z.string().optional(),
+  quantidade: z.string().optional(),
+  destino_pessoa: z.string().optional(),
   observacoes: z.string().optional(),
 });
 
 const schemaTemperatura = z.object({
-  ...commonFields,
-  frequencia: z.string().min(1, "Frequência é obrigatória"),
-  data_hora: z.string().min(1, "Data e Hora são obrigatórios"),
-  umidade: z.string().min(1, "Umidade é obrigatória"),
-  temperatura: z.string().min(1, "Temperatura é obrigatória"),
+  setor: z.string().min(1, "Setor é obrigatório"),
+  responsavel: z.string().min(1, "Responsável é obrigatório"),
+  prioridade: z.string().min(1, "Prioridade é obrigatória"),
+  prazo: z.string().min(1, "Prazo é obrigatório"),
+  frequencia: z.string().optional(),
+  data_hora: z.string().optional(),
+  umidade: z.string().optional(),
+  temperatura: z.string().optional(),
   nao_conformidades: z.string().optional(),
   acoes_corretivas: z.string().optional(),
   medidas_preventivas: z.string().optional(),
-  resp: z.string().min(1, "Responsável é obrigatório"),
+  resp: z.string().optional(),
 });
 
 const formSchemas = {
@@ -210,80 +224,83 @@ const CreateOS = () => {
   };
 
   const renderFormFields = () => {
-    return (
-      <>
-        {/* Campos Comuns para todas as Ordens de Serviço */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="responsavel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Responsável</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: Maria" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="setor"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Setor</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ex: Produção" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="prioridade"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prioridade</FormLabel>
-                <FormControl>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a prioridade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="critica">Crítica</SelectItem>
-                      <SelectItem value="alta">Alta</SelectItem>
-                      <SelectItem value="media">Média</SelectItem>
-                      <SelectItem value="baixa">Baixa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="prazo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prazo</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        {/* Fim dos Campos Comuns */}
+    const commonFormFields = (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="responsavel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Responsável</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Maria" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="setor"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Setor</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Produção" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="prioridade"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Prioridade</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a prioridade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="critica">Crítica</SelectItem>
+                        <SelectItem value="alta">Alta</SelectItem>
+                        <SelectItem value="media">Média</SelectItem>
+                        <SelectItem value="baixa">Baixa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="prazo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Prazo</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </>
+    );
 
-        {/* Campos Dinâmicos do Formulário */}
-        {formType === "higienizacao" && (
+    switch (formType) {
+      case "higienizacao":
+      case "residuos":
+        return (
           <>
+            {commonFormFields}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -380,10 +397,11 @@ const CreateOS = () => {
               )}
             />
           </>
-        )}
-
-        {formType === "recebimento" && (
+        );
+      case "recebimento":
+        return (
           <>
+            {commonFormFields}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -493,10 +511,11 @@ const CreateOS = () => {
               )}
             />
           </>
-        )}
-
-        {formType === "checklist" && (
+        );
+      case "checklist":
+        return (
           <>
+            {commonFormFields}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -524,22 +543,114 @@ const CreateOS = () => {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="data"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <FormField
-              control={form.control}
-              name="data"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Data</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Campos do checklist */}
+            
             <h3 className="font-semibold mt-4">Checklist de Higiene</h3>
+            <div className="border rounded-md mt-2">
+              <div className="grid grid-cols-6 border-b bg-gray-100 font-medium">
+                <div className="p-2 col-span-2 border-r"></div>
+                <div className="p-2 text-center border-r">Pasta</div>
+                <div className="p-2 text-center border-r">Seleção</div>
+                <div className="p-2 text-center border-r">Beneficiamento</div>
+                <div className="p-2 text-center">Expedição</div>
+              </div>
+              
+              {/* Higiene */}
+              <div className="grid grid-cols-6 border-b">
+                <div className="p-2 col-span-2 border-r">Os profissionais tem asseio corporal...?</div>
+                <div className="p-2 text-center border-r">
+                  <FormField
+                    control={form.control}
+                    name="pasta_higiene"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+                <div className="p-2 text-center border-r">
+                  <FormField
+                    control={form.control}
+                    name="selecao_higiene"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+                <div className="p-2 text-center border-r">
+                  <FormField
+                    control={form.control}
+                    name="beneficiamento_higiene"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+                <div className="p-2 text-center">
+                  <FormField
+                    control={form.control}
+                    name="expedicao_higiene"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Adornos */}
+              <div className="grid grid-cols-6 border-b">
+                <div className="p-2 col-span-2 border-r">Os profissionais utilizam adornos na área de produção...?</div>
+                <div className="p-2 text-center border-r">
+                  <FormField
+                    control={form.control}
+                    name="pasta_adornos"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+                <div className="p-2 text-center border-r">
+                  <FormField
+                    control={form.control}
+                    name="selecao_adornos"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+                <div className="p-2 text-center border-r">
+                  <FormField
+                    control={form.control}
+                    name="beneficiamento_adornos"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+                <div className="p-2 text-center">
+                  <FormField
+                    control={form.control}
+                    name="expedicao_adornos"
+                    render={({ field }) => (
+                      <Input {...field} placeholder="C/NC" className="text-center" />
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+
             <FormField
               control={form.control}
               name="nao_conformidades"
@@ -593,10 +704,11 @@ const CreateOS = () => {
               )}
             />
           </>
-        )}
-
-        {formType === "pragas" && (
+        );
+      case "pragas":
+        return (
           <>
+            {commonFormFields}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -727,10 +839,11 @@ const CreateOS = () => {
               )}
             />
           </>
-        )}
-
-        {formType === "treinamento" && (
+        );
+      case "treinamento":
+        return (
           <>
+            {commonFormFields}
             <FormField
               control={form.control}
               name="frequencia"
@@ -812,10 +925,11 @@ const CreateOS = () => {
               )}
             />
           </>
-        )}
-        
-        {formType === "temperatura" && (
+        );
+      case "temperatura":
+        return (
           <>
+            {commonFormFields}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -873,18 +987,18 @@ const CreateOS = () => {
               />
             </div>
             <FormField
-                control={form.control}
-                name="nao_conformidades"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição das Não-Conformidades</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Descreva as não-conformidades" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              control={form.control}
+              name="nao_conformidades"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição das Não-Conformidades</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Descreva as não-conformidades" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="acoes_corretivas"
@@ -925,9 +1039,10 @@ const CreateOS = () => {
               )}
             />
           </>
-        )}
-      </>
-    );
+        );
+      default:
+        return commonFormFields;
+    }
   };
 
   return (
