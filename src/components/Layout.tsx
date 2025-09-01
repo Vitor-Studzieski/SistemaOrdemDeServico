@@ -1,8 +1,10 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import Header from "@/components/Header";
+import { Header } from "@/components/Header"
+import { Outlet } from 'react-router-dom';
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+// 1. A prop 'children' foi removida da definição da função.
+export default function Layout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -11,8 +13,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col">
           <Header />
           
-          <main className="flex-1">
-            {children}
+          {/* 2. O {children} foi substituído pelo <Outlet /> */}
+          {/* O React Router irá renderizar as rotas filhas aqui automaticamente */}
+          <main className="flex-1 p-4 sm:p-6 md:p-8">
+            <Outlet />
           </main>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   FileText, 
@@ -8,10 +8,10 @@ import {
   Settings,
   LogOut,
   Plus,
-  BookOpen // <-- Adicionei a importação do novo ícone
+  BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/components/contexts/AuthContext";
 
 import {
   Sidebar,
@@ -21,13 +21,12 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 
 const items = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/index", // <-- ALTERAÇÃO 1: Corrigido para apontar para /index
     icon: LayoutDashboard,
   },
   {
@@ -69,15 +68,16 @@ const items = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate(); // <-- ALTERAÇÃO 2: Adicionado o hook de navegação
   const currentPath = location.pathname;
   const { signOut, user } = useAuth();
 
-  const isActive = (path) => currentPath === path;
   const getNavCls = ({ isActive }) =>
     isActive ? "bg-emerald-600 text-white border-r-2 border-emerald-400" : "text-slate-300 hover:bg-slate-800 hover:text-white";
 
   const handleSignOut = async () => {
     await signOut();
+    navigate('/'); // <-- ALTERAÇÃO 3: Redireciona para a landing page após o logout
   };
 
   return (
@@ -113,8 +113,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* User info and logout at bottom */}
+        
         <div className="mt-auto p-4 border-t border-slate-700">
           <div className="text-xs text-slate-400 mb-2">
             {user?.email}
