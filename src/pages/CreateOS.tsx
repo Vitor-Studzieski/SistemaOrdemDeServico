@@ -354,7 +354,6 @@ const CreateOS = () => {
               <FormField control={form.control} name="verificador" render={({ field }) => ( <FormItem> <FormLabel>Verificador</FormLabel> <FormControl> <Input placeholder="Ex: Pedro" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
               <FormField control={form.control} name="data" render={({ field }) => ( <FormItem> <FormLabel>Data</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
             </div>
-            
             <h3 className="font-semibold mt-4">Checklist de Higiene</h3>
             <div className="border rounded-md mt-2">
               <div className="grid grid-cols-6 border-b bg-gray-100 font-medium">
@@ -364,7 +363,6 @@ const CreateOS = () => {
                 <div className="p-2 text-center border-r">Beneficiamento</div>
                 <div className="p-2 text-center">Expedição</div>
               </div>
-              
               <div className="grid grid-cols-6 border-b items-center">
                 <div className="p-2 col-span-2 border-r">Os profissionais tem asseio corporal...?</div>
                 <div className="p-2 text-center border-r">
@@ -380,7 +378,6 @@ const CreateOS = () => {
                   <FormField control={form.control} name="expedicao_higiene" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
                 </div>
               </div>
-
               <div className="grid grid-cols-6 border-b items-center">
                 <div className="p-2 col-span-2 border-r">Os profissionais utilizam adornos na área de produção...?</div>
                 <div className="p-2 text-center border-r">
@@ -397,7 +394,6 @@ const CreateOS = () => {
                 </div>
               </div>
             </div>
-
             <FormField control={form.control} name="nao_conformidades" render={({ field }) => ( <FormItem> <FormLabel>Não conformidades</FormLabel> <FormControl> <Input placeholder="Liste as não conformidades" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
             <FormField control={form.control} name="acao_corretiva" render={({ field }) => ( <FormItem> <FormLabel>Ação Corretiva</FormLabel> <FormControl> <Textarea placeholder="Descreva a ação corretiva" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
             <FormField control={form.control} name="motivo_nc" render={({ field }) => ( <FormItem> <FormLabel>Motivo da NC</FormLabel> <FormControl> <Input placeholder="Motivo da não conformidade" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
