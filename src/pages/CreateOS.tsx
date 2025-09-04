@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, PlusCircle, Trash2 } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -12,7 +12,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,498 +21,399 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-const schemaHigienizacao = z.object({
-  setor: z.string().min(1, "Setor é obrigatório"),
+const baseSchema = z.object({
+  tipo_ordem: z.string(),
   responsavel: z.string().min(1, "Responsável é obrigatório"),
+  setor: z.string().optional(),
   prioridade: z.string().min(1, "Prioridade é obrigatória"),
   prazo: z.string().min(1, "Prazo é obrigatório"),
-  mes: z.string().optional(),
-  ass: z.string().optional(),
-  data: z.string().optional(),
-  produto_status: z.string().optional(),
-  quantidade: z.string().optional(),
-  destino_pessoa: z.string().optional(),
+});
+
+const schemaRetiradaResiduos = baseSchema.extend({
+  data: z.string().min(1, "Data é obrigatória"),
+  produto_status: z.string().min(1, "Produto/Status é obrigatório"),
+  quantidade: z.string().min(1, "Quantidade é obrigatória"),
+  destino_pessoa: z.string().min(1, "Destino/Pessoa é obrigatório"),
   observacoes: z.string().optional(),
 });
 
-const schemaRecebimento = z.object({
-  setor: z.string().min(1, "Setor é obrigatório"),
-  responsavel: z.string().min(1, "Responsável é obrigatório"),
-  prioridade: z.string().min(1, "Prioridade é obrigatória"),
-  prazo: z.string().min(1, "Prazo é obrigatório"),
-  mes: z.string().optional(),
-  ass: z.string().optional(),
-  data: z.string().optional(),
-  produto_recebido_status: z.string().optional(),
-  quantidade: z.string().optional(),
-  fornecedor: z.string().optional(),
-  lote: z.string().optional(),
+const schemaControlePragas = baseSchema.extend({
+  data: z.string().min(1, "Data é obrigatória"),
+  local: z.string().min(1, "Local é obrigatório"),
+  tipo_praga: z.string().min(1, "Tipo de praga é obrigatório"),
+  quantidade: z.string().min(1, "Quantidade é obrigatória"),
+  comunicado_responsavel: z.enum(["sim", "nao"], { required_error: "Este campo é obrigatório" }),
+  providencias_cliente: z.string().min(1, "Providências do cliente são obrigatórias"),
+  providencias_dedetizadora: z.string().min(1, "Providências da dedetizadora são obrigatórias"),
   observacoes: z.string().optional(),
 });
 
-const schemaChecklist = z.object({
-  setor: z.string().min(1, "Setor é obrigatório"),
-  responsavel: z.string().min(1, "Responsável é obrigatório"),
-  prioridade: z.string().min(1, "Prioridade é obrigatória"),
-  prazo: z.string().min(1, "Prazo é obrigatório"),
-  mes: z.string().optional(),
-  verificador: z.string().optional(),
-  data: z.string().optional(),
-  pasta_higiene: z.string().optional(),
-  selecao_higiene: z.string().optional(),
-  beneficiamento_higiene: z.string().optional(),
-  expedicao_higiene: z.string().optional(),
-  pasta_adornos: z.string().optional(),
-  selecao_adornos: z.string().optional(),
-  beneficiamento_adornos: z.string().optional(),
-  expedicao_adornos: z.string().optional(),
+const schemaChecklistManipuladores = baseSchema.extend({
+  mes: z.string().min(1, "Mês é obrigatório"),
+  verificador: z.string().min(1, "Verificador é obrigatório"),
+  data: z.string().min(1, "Data é obrigatória"),
+  setores_selecionados: z.array(z.string()).refine((value) => value.some((item) => item), {
+    message: "Você precisa selecionar pelo menos um setor.",
+  }),
+  grid: z.record(z.string(), z.enum(["C", "NC"])),
   nao_conformidades: z.string().optional(),
   acao_corretiva: z.string().optional(),
+  funcionarios_reorientados: z.string().optional(),
   motivo_nc: z.string().optional(),
-  nome_assinaturas: z.string().optional(),
+  acao_corretiva_rodape: z.string().optional(),
 });
 
-const schemaPragas = z.object({
-  setor: z.string().min(1, "Setor é obrigatório"),
-  responsavel: z.string().min(1, "Responsável é obrigatório"),
-  prioridade: z.string().min(1, "Prioridade é obrigatória"),
-  prazo: z.string().min(1, "Prazo é obrigatório"),
-  frequencia: z.string().optional(),
-  data: z.string().optional(),
-  local: z.string().optional(),
-  tipos_praga: z.string().optional(),
-  quantidade: z.string().optional(),
-  comunicado_responsavel: z.string().optional(),
-  prov_cliente: z.string().optional(),
-  prov_dedetizadora: z.string().optional(),
+const recebimentoItemSchema = z.object({
+  data: z.string().min(1, "Data é obrigatória"),
+  produto_recebido: z.string().min(1, "Produto é obrigatório"),
+  status: z.enum(["C", "NC"], { required_error: "Status é obrigatório" }),
+  quantidade: z.string().min(1, "Quantidade é obrigatória"),
+  fornecedor: z.string().min(1, "Fornecedor é obrigatório"),
+  lote: z.string().min(1, "Lote é obrigatório"),
   observacoes: z.string().optional(),
 });
 
-const schemaTreinamento = z.object({
-  setor: z.string().min(1, "Setor é obrigatório"),
-  responsavel: z.string().min(1, "Responsável é obrigatório"),
-  prioridade: z.string().min(1, "Prioridade é obrigatória"),
-  prazo: z.string().min(1, "Prazo é obrigatório"),
-  frequencia: z.string().optional(),
-  evento: z.string().optional(),
-  periodo: z.string().optional(),
-  local: z.string().optional(),
-  instrutor: z.string().optional(),
-  conteudo_treinamento: z.string().optional(),
+const schemaRecebimentoMP = baseSchema.extend({
+  mes: z.string().min(1, "Mês é obrigatório"),
+  assinatura: z.string().min(1, "Assinatura é obrigatória"),
+  itens: z.array(recebimentoItemSchema).min(1, "Adicione pelo menos um item."),
 });
 
-const schemaResiduos = z.object({
-  setor: z.string().min(1, "Setor é obrigatório"),
-  responsavel: z.string().min(1, "Responsável é obrigatório"),
-  prioridade: z.string().min(1, "Prioridade é obrigatória"),
-  prazo: z.string().min(1, "Prazo é obrigatório"),
-  mes: z.string().optional(),
-  ass: z.string().optional(),
-  data: z.string().optional(),
-  produto_status: z.string().optional(),
-  quantidade: z.string().optional(),
-  destino_pessoa: z.string().optional(),
-  observacoes: z.string().optional(),
+const recebimentoEmbalagensItemSchema = z.object({
+  data: z.string().min(1, "Data é obrigatória"),
+  produto: z.string().min(1, "Produto é obrigatório"),
+  lote: z.string().min(1, "Lote é obrigatório"),
+  validade: z.string().min(1, "Validade é obrigatória"),
+  selagem: z.enum(["C", "NC"]),
+  impressao: z.enum(["C", "NC"]),
+  aparencia: z.enum(["C", "NC"]),
+  peso_amostras: z.string().min(1, "Peso das amostras é obrigatório"),
+  peso_medio: z.string().min(1, "Peso médio é obrigatório"),
+  peso_status: z.enum(["C", "NC"]),
+  acao_corretiva: z.string().optional(),
 });
 
-const schemaTemperatura = z.object({
-  setor: z.string().min(1, "Setor é obrigatório"),
-  responsavel: z.string().min(1, "Responsável é obrigatório"),
-  prioridade: z.string().min(1, "Prioridade é obrigatória"),
-  prazo: z.string().min(1, "Prazo é obrigatório"),
-  frequencia: z.string().optional(),
-  data_hora: z.string().optional(),
-  umidade: z.string().optional(),
-  temperatura: z.string().optional(),
-  nao_conformidades: z.string().optional(),
-  acoes_corretivas: z.string().optional(),
-  medidas_preventivas: z.string().optional(),
-  resp: z.string().optional(),
+const schemaRecebimentoEmbalagens = baseSchema.extend({
+  mes_ano: z.string().min(1, "Mês/Ano é obrigatório"),
+  itens: z.array(recebimentoEmbalagensItemSchema).min(1, "Adicione pelo menos um item."),
 });
 
 const formSchemas = {
-  "higienizacao": schemaHigienizacao,
-  "recebimento": schemaRecebimento,
-  "checklist": schemaChecklist,
-  "pragas": schemaPragas,
-  "treinamento": schemaTreinamento,
-  "residuos": schemaResiduos,
-  "temperatura": schemaTemperatura,
+  higiene_equipamentos: schemaRetiradaResiduos, 
+  retirada_residuos: schemaRetiradaResiduos,
+  recebimento_mp: schemaRecebimentoMP,
+  recebimento_quimicos: schemaRecebimentoMP, 
+  checklist_manipuladores: schemaChecklistManipuladores,
+  controle_pragas: schemaControlePragas,
+  recebimento_embalagens: schemaRecebimentoEmbalagens,
+};
+
+const tipoOrdemLabels = {
+  higiene_equipamentos: "Controle de Higiene dos Equipamentos",
+  retirada_residuos: "Planilha de Retiradas de Resíduos",
+  recebimento_mp: "Recebimento de Matérias-Primas",
+  recebimento_quimicos: "Recebimento de Produtos Químicos",
+  checklist_manipuladores: "Checklist de Higiene e Saúde",
+  controle_pragas: "Controle de Ocorrência de Pragas",
+  recebimento_embalagens: "Recebimento de Embalagens",
 };
 
 const CreateOS = () => {
-  const [formType, setFormType] = useState("higienizacao");
+  const [formType, setFormType] = useState("higiene_equipamentos");
+  
   const form = useForm({
     resolver: zodResolver(formSchemas[formType]),
     defaultValues: {
-      setor: "",
-      responsavel: "",
-      prioridade: "",
-      prazo: "",
+      tipo_ordem: formType,
     },
   });
+
+  const { fields: mpFields, append: mpAppend, remove: mpRemove } = useFieldArray({
+    control: form.control,
+    name: "itens",
+  });
+
+  const { fields: embFields, append: embAppend, remove: embRemove } = useFieldArray({
+    control: form.control,
+    name: "itens",
+  });
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    form.reset();
+    form.reset({ tipo_ordem: formType });
   }, [formType, form.reset]);
 
   const createOrderMut = useMutation({
-    mutationFn: async (newOrder) => {
-      const { data, error } = await supabase.from("service_orders").insert([newOrder]).select();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["service_orders"] });
-      toast({
-        title: "Ordem de serviço criada!",
-        description: "A nova ordem foi salva com sucesso.",
-      });
-      navigate("/orders");
-    },
-    onError: (error) => {
-      toast({
-        title: "Erro ao criar ordem",
-        description: `Ocorreu um erro: ${error.message}`,
-        variant: "destructive",
-      });
-    },
+      mutationFn: async (newOrder) => {
+        const { data, error } = await supabase.from("service_orders").insert([newOrder]).select();
+        if (error) throw error;
+        return data;
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["service_orders"] });
+        toast({
+          title: "Ordem de serviço criada!",
+          description: "A nova ordem foi salva com sucesso.",
+        });
+        navigate("/orders");
+      },
+      onError: (error) => {
+        toast({
+          title: "Erro ao criar ordem",
+          description: `Ocorreu um erro: ${error.message}`,
+          variant: "destructive",
+        });
+      },
   });
 
   const onSubmit = (values) => {
-    let titulo = "";
-    let descricao = "";
-
-    switch (formType) {
-        case "higienizacao":
-            titulo = `Higienização de Equipamentos - Mês: ${values.mes}`;
-            descricao = `Responsável: ${values.responsavel}. Data: ${values.data}.`;
-            break;
-        case "recebimento":
-            titulo = `Recebimento de Matéria-Prima - Mês: ${values.mes}`;
-            descricao = `Fornecedor: ${values.fornecedor}. Lote: ${values.lote}.`;
-            break;
-        case "checklist":
-            titulo = `Checklist de Manipuladores - Mês: ${values.mes}`;
-            descricao = `Verificador: ${values.verificador}. Setor: ${values.setor}.`;
-            break;
-        case "pragas":
-            titulo = `Controle de Pragas - Data: ${values.data}`;
-            descricao = `Local: ${values.local}. Quantidade: ${values.quantidade}.`;
-            break;
-        case "treinamento":
-            titulo = `Registro de Treinamento - Evento: ${values.evento}`;
-            descricao = `Instrutor: ${values.instrutor}. Período: ${values.periodo}.`;
-            break;
-        case "residuos":
-            titulo = `Retirada de Resíduos - Mês: ${values.mes}`;
-            descricao = `Responsável: ${values.responsavel}. Data: ${values.data}.`;
-            break;
-        case "temperatura":
-            titulo = `Registro de Temperatura e Umidade - Setor: ${values.setor}`;
-            descricao = `Umidade: ${values.umidade}%. Temperatura: ${values.temperatura}°C.`;
-            break;
-        default:
-            titulo = "Nova Ordem de Serviço";
-            descricao = "Detalhes não especificados.";
-    }
-
-    const orderData = {
-      tipo_os: formType,
-      titulo: titulo,
-      descricao: descricao,
-      status: "pendente",
-      criado_em: new Date().toISOString(),
-      responsavel: values.responsavel,
-      setor: values.setor,
-      prioridade: values.prioridade,
-      prazo: values.prazo,
-      form_data: values,
+    const { responsavel, setor, prioridade, prazo, ...details } = values;
+    const payload = {
+      tipo: tipoOrdemLabels[formType],
+      responsavel,
+      setor,
+      prioridade,
+      prazo,
+      status: 'Pendente',
+      detalhes: details,
     };
-
-    createOrderMut.mutate(orderData);
+    createOrderMut.mutate(payload);
   };
-
+  
   const renderFormFields = () => {
-    const commonFormFields = (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="responsavel"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Responsável</FormLabel>
+    const commonFields = (
+      <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="responsavel"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Responsável</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ex: Maria" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="setor"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Setor</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ex: Produção" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="prioridade"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Prioridade</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <Input placeholder="Ex: Maria" {...field} />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a prioridade" />
+                    </SelectTrigger>
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="setor"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Setor</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Produção" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="prioridade"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Prioridade</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a prioridade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="critica">Crítica</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                        <SelectItem value="media">Média</SelectItem>
-                        <SelectItem value="baixa">Baixa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="prazo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Prazo</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </>
+                  <SelectContent className="bg-white shadow-md z-50">
+                    <SelectItem value="critica">Crítica</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="media">Média</SelectItem>
+                    <SelectItem value="baixa">Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="prazo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Prazo</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </>
     );
 
     switch (formType) {
-      case "higienizacao":
-      case "residuos":
-        return (
-          <>
-            {commonFormFields}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField control={form.control} name="mes" render={({ field }) => ( <FormItem> <FormLabel>Mês</FormLabel> <FormControl> <Input placeholder="Ex: Março" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="ass" render={({ field }) => ( <FormItem> <FormLabel>Assinatura</FormLabel> <FormControl> <Input placeholder="Ex: Assinatura do responsável" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="data" render={({ field }) => ( <FormItem> <FormLabel>Data</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="produto_status" render={({ field }) => ( <FormItem> <FormLabel>Produto retirado/status</FormLabel> <FormControl> <Input placeholder="Ex: Conforme/Não Conforme" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="quantidade" render={({ field }) => ( <FormItem> <FormLabel>Quantidade</FormLabel> <FormControl> <Input type="number" placeholder="Ex: 10" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="destino_pessoa" render={({ field }) => ( <FormItem> <FormLabel>Destino ou pessoa</FormLabel> <FormControl> <Input placeholder="Ex: Lixo comum" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="observacoes" render={({ field }) => ( <FormItem> <FormLabel>Observações</FormLabel> <FormControl> <Textarea placeholder="Adicione observações aqui" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-          </>
-        );
-      case "recebimento":
-        return (
-          <>
-            {commonFormFields}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField control={form.control} name="mes" render={({ field }) => ( <FormItem> <FormLabel>Mês</FormLabel> <FormControl> <Input placeholder="Ex: Março" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="ass" render={({ field }) => ( <FormItem> <FormLabel>Assinatura</FormLabel> <FormControl> <Input placeholder="Ex: Assinatura do responsável" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="data" render={({ field }) => ( <FormItem> <FormLabel>Data</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="produto_recebido_status" render={({ field }) => ( <FormItem> <FormLabel>Produto recebido/Status</FormLabel> <FormControl> <Input placeholder="Ex: Produto A / Conforme" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField control={form.control} name="quantidade" render={({ field }) => ( <FormItem> <FormLabel>Quantidade</FormLabel> <FormControl> <Input type="number" placeholder="Ex: 50" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="fornecedor" render={({ field }) => ( <FormItem> <FormLabel>Fornecedor</FormLabel> <FormControl> <Input placeholder="Ex: Fornecedor X" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="lote" render={({ field }) => ( <FormItem> <FormLabel>Lote</FormLabel> <FormControl> <Input placeholder="Ex: Lote 123" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="observacoes" render={({ field }) => ( <FormItem> <FormLabel>Observações</FormLabel> <FormControl> <Textarea placeholder="Adicione observações aqui" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-          </>
-        );
-      case "checklist":
-        return (
-          <>
-            {commonFormFields}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField control={form.control} name="mes" render={({ field }) => ( <FormItem> <FormLabel>Mês</FormLabel> <FormControl> <Input placeholder="Ex: Março" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="verificador" render={({ field }) => ( <FormItem> <FormLabel>Verificador</FormLabel> <FormControl> <Input placeholder="Ex: Pedro" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="data" render={({ field }) => ( <FormItem> <FormLabel>Data</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <h3 className="font-semibold mt-4">Checklist de Higiene</h3>
-            <div className="border rounded-md mt-2">
-              <div className="grid grid-cols-6 border-b bg-gray-100 font-medium">
-                <div className="p-2 col-span-2 border-r"></div>
-                <div className="p-2 text-center border-r">Pasta</div>
-                <div className="p-2 text-center border-r">Seleção</div>
-                <div className="p-2 text-center border-r">Beneficiamento</div>
-                <div className="p-2 text-center">Expedição</div>
+      case "higiene_equipamentos":
+      case "retirada_residuos":
+        return <>
+          {commonFields}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="data" render={({ field }) => (<FormItem><FormLabel>Data</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="produto_status" render={({ field }) => (<FormItem><FormLabel>Produto Retirado / Status</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="quantidade" render={({ field }) => (<FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="destino_pessoa" render={({ field }) => (<FormItem><FormLabel>Destino ou Pessoa</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+          </div>
+          <FormField control={form.control} name="observacoes" render={({ field }) => (<FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+        </>
+      case "controle_pragas":
+         return <>
+          {commonFields}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <FormField control={form.control} name="data" render={({ field }) => (<FormItem><FormLabel>Data</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+             <FormField control={form.control} name="local" render={({ field }) => (<FormItem><FormLabel>Local</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+           </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <FormField control={form.control} name="tipo_praga" render={({ field }) => (<FormItem><FormLabel>Tipo de Praga</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+             <FormField control={form.control} name="quantidade" render={({ field }) => (<FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+           </div>
+           <FormField control={form.control} name="comunicado_responsavel" render={({ field }) => (
+              <FormItem><FormLabel>Comunicado Responsável</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl>
+                  <SelectContent className="bg-white shadow-md z-50"><SelectItem value="sim">Sim</SelectItem><SelectItem value="nao">Não</SelectItem></SelectContent>
+                </Select><FormMessage />
+              </FormItem>)}
+            />
+           <FormField control={form.control} name="providencias_cliente" render={({ field }) => (<FormItem><FormLabel>Providências Adotadas pelo Cliente</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+           <FormField control={form.control} name="providencias_dedetizadora" render={({ field }) => (<FormItem><FormLabel>Providências Adotadas pela Dedetizadora</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+           <FormField control={form.control} name="observacoes" render={({ field }) => (<FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+        </>
+      case "recebimento_mp":
+      case "recebimento_quimicos":
+        return <>
+          {commonFields}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="mes" render={({ field }) => (<FormItem><FormLabel>Mês</FormLabel><FormControl><Input placeholder="Ex: Setembro" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="assinatura" render={({ field }) => (<FormItem><FormLabel>Assinatura (Responsável)</FormLabel><FormControl><Input placeholder="Digite o nome" {...field} /></FormControl><FormMessage /></FormItem>)} />
+          </div>
+          <CardTitle className="mt-6 mb-2 text-lg">Itens Recebidos</CardTitle>
+          {mpFields.map((item, index) => (
+            <Card key={item.id} className="p-4 relative space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name={`itens.${index}.data`} render={({ field }) => (<FormItem><FormLabel>Data</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`itens.${index}.produto_recebido`} render={({ field }) => (<FormItem><FormLabel>Produto Recebido</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
-              <div className="grid grid-cols-6 border-b items-center">
-                <div className="p-2 col-span-2 border-r">Os profissionais tem asseio corporal...?</div>
-                <div className="p-2 text-center border-r">
-                  <FormField control={form.control} name="pasta_higiene" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
-                <div className="p-2 text-center border-r">
-                  <FormField control={form.control} name="selecao_higiene" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
-                <div className="p-2 text-center border-r">
-                  <FormField control={form.control} name="beneficiamento_higiene" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
-                <div className="p-2 text-center">
-                  <FormField control={form.control} name="expedicao_higiene" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name={`itens.${index}.quantidade`} render={({ field }) => (<FormItem><FormLabel>Quantidade</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`itens.${index}.fornecedor`} render={({ field }) => (<FormItem><FormLabel>Fornecedor</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
-              <div className="grid grid-cols-6 border-b items-center">
-                <div className="p-2 col-span-2 border-r">Os profissionais utilizam adornos na área de produção...?</div>
-                <div className="p-2 text-center border-r">
-                  <FormField control={form.control} name="pasta_adornos" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
-                <div className="p-2 text-center border-r">
-                  <FormField control={form.control} name="selecao_adornos" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
-                <div className="p-2 text-center border-r">
-                  <FormField control={form.control} name="beneficiamento_adornos" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
-                <div className="p-2 text-center">
-                  <FormField control={form.control} name="expedicao_adornos" render={({ field }) => ( <FormItem> <FormControl> <Input {...field} placeholder="C/NC" className="text-center" /> </FormControl> </FormItem> )}/>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField control={form.control} name={`itens.${index}.lote`} render={({ field }) => (<FormItem><FormLabel>Lote</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name={`itens.${index}.status`} render={({ field }) => (<FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger></FormControl><SelectContent className="bg-white shadow-md z-50"><SelectItem value="C">Conforme (C)</SelectItem><SelectItem value="NC">Não Conforme (NC)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
               </div>
-            </div>
-            <FormField control={form.control} name="nao_conformidades" render={({ field }) => ( <FormItem> <FormLabel>Não conformidades</FormLabel> <FormControl> <Input placeholder="Liste as não conformidades" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="acao_corretiva" render={({ field }) => ( <FormItem> <FormLabel>Ação Corretiva</FormLabel> <FormControl> <Textarea placeholder="Descreva a ação corretiva" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="motivo_nc" render={({ field }) => ( <FormItem> <FormLabel>Motivo da NC</FormLabel> <FormControl> <Input placeholder="Motivo da não conformidade" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="nome_assinaturas" render={({ field }) => ( <FormItem> <FormLabel>Nome e Assinaturas dos funcionários reorientados</FormLabel> <FormControl> <Textarea placeholder="Nomes e assinaturas" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-          </>
-        );
-      case "pragas":
-        return (
-          <>
-            {commonFormFields}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="frequencia" render={({ field }) => ( <FormItem> <FormLabel>Frequência</FormLabel> <FormControl> <Input placeholder="Ex: Mensal" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="data" render={({ field }) => ( <FormItem> <FormLabel>Data</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="local" render={({ field }) => ( <FormItem> <FormLabel>Local</FormLabel> <FormControl> <Input placeholder="Ex: Depósito" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="tipos_praga" render={({ field }) => ( <FormItem> <FormLabel>Tipos de Praga</FormLabel> <FormControl> <Input placeholder="Ex: Insetos" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="quantidade" render={({ field }) => ( <FormItem> <FormLabel>Quantidade</FormLabel> <FormControl> <Input type="number" placeholder="Ex: 5" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="comunicado_responsavel" render={({ field }) => ( <FormItem> <FormLabel>Comunicado Responsável</FormLabel> <FormControl> <Select onValueChange={field.onChange} defaultValue={field.value}> <SelectTrigger> <SelectValue placeholder="Selecionar" /> </SelectTrigger> <SelectContent> <SelectItem value="sim">Sim</SelectItem> <SelectItem value="nao">Não</SelectItem> </SelectContent> </Select> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="prov_cliente" render={({ field }) => ( <FormItem> <FormLabel>Providências Adotadas pelo Cliente</FormLabel> <FormControl> <Textarea placeholder="Descreva as providências" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="prov_dedetizadora" render={({ field }) => ( <FormItem> <FormLabel>Providências Adotadas pela Dedetizadora</FormLabel> <FormControl> <Textarea placeholder="Descreva as providências" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="observacoes" render={({ field }) => ( <FormItem> <FormLabel>Observações</FormLabel> <FormControl> <Textarea placeholder="Adicione observações aqui" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-          </>
-        );
-      case "treinamento":
-        return (
-          <>
-            {commonFormFields}
-            <FormField control={form.control} name="frequencia" render={({ field }) => ( <FormItem> <FormLabel>Frequência</FormLabel> <FormControl> <Input placeholder="Ex: Quando necessário" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="evento" render={({ field }) => ( <FormItem> <FormLabel>Evento</FormLabel> <FormControl> <Input placeholder="Ex: Treinamento de Boas Práticas" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="periodo" render={({ field }) => ( <FormItem> <FormLabel>Período</FormLabel> <FormControl> <Input type="date" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="local" render={({ field }) => ( <FormItem> <FormLabel>Local</FormLabel> <FormControl> <Input placeholder="Ex: Empresa MR AMENDOIM" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="instrutor" render={({ field }) => ( <FormItem> <FormLabel>Instrutor</FormLabel> <FormControl> <Input placeholder="Ex: Regiele Pedroso" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="conteudo_treinamento" render={({ field }) => ( <FormItem> <FormLabel>Conteúdo do treinamento</FormLabel> <FormControl> <Textarea placeholder="Descreva o conteúdo do treinamento" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-          </>
-        );
-      case "temperatura":
-        return (
-          <>
-            {commonFormFields}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="frequencia" render={({ field }) => ( <FormItem> <FormLabel>Frequência</FormLabel> <FormControl> <Input placeholder="Ex: Diário" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="data_hora" render={({ field }) => ( <FormItem> <FormLabel>Data e Hora</FormLabel> <FormControl> <Input type="datetime-local" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField control={form.control} name="umidade" render={({ field }) => ( <FormItem> <FormLabel>Umidade (%)</FormLabel> <FormControl> <Input type="number" placeholder="Ex: 50" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="temperatura" render={({ field }) => ( <FormItem> <FormLabel>Temperatura (°C)</FormLabel> <FormControl> <Input type="number" placeholder="Ex: 25" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            </div>
-            <FormField control={form.control} name="nao_conformidades" render={({ field }) => ( <FormItem> <FormLabel>Descrição das Não-Conformidades</FormLabel> <FormControl> <Textarea placeholder="Descreva as não-conformidades" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="acoes_corretivas" render={({ field }) => ( <FormItem> <FormLabel>Ações Corretivas</FormLabel> <FormControl> <Textarea placeholder="Descreva as ações corretivas" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="medidas_preventivas" render={({ field }) => ( <FormItem> <FormLabel>Medidas Preventivas</FormLabel> <FormControl> <Textarea placeholder="Descreva as medidas preventivas" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-            <FormField control={form.control} name="resp" render={({ field }) => ( <FormItem> <FormLabel>Resp.</FormLabel> <FormControl> <Input placeholder="Responsável" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-          </>
-        );
+              <FormField control={form.control} name={`itens.${index}.observacoes`} render={({ field }) => (<FormItem><FormLabel>Observações</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <Button type="button" variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => mpRemove(index)}><Trash2 className="w-4 h-4" /></Button>
+            </Card>
+          ))}
+          <Button type="button" variant="outline" onClick={() => mpAppend({ data: '', produto_recebido: '', status: 'C', quantidade: '', fornecedor: '', lote: '', observacoes: ''})}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Item</Button>
+          <FormMessage>{form.formState.errors.itens?.message}</FormMessage>
+        </>
+      case "recebimento_embalagens":
+         return <>
+          {commonFields}
+           <FormField control={form.control} name="mes_ano" render={({ field }) => (<FormItem><FormLabel>Mês/Ano</FormLabel><FormControl><Input placeholder="Ex: 09/2025" {...field} /></FormControl><FormMessage /></FormItem>)} />
+           <CardTitle className="mt-6 mb-2 text-lg">Embalagens Recebidas</CardTitle>
+          {embFields.map((item, index) => (
+            <Card key={item.id} className="p-4 relative space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name={`itens.${index}.data`} render={({ field }) => (<FormItem><FormLabel>Data</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name={`itens.${index}.produto`} render={({ field }) => (<FormItem><FormLabel>Produto</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField control={form.control} name={`itens.${index}.lote`} render={({ field }) => (<FormItem><FormLabel>Lote</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name={`itens.${index}.validade`} render={({ field }) => (<FormItem><FormLabel>Validade</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                 <FormField control={form.control} name={`itens.${index}.selagem`} render={({ field }) => (<FormItem><FormLabel>Selagem</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="C/NC" /></SelectTrigger></FormControl><SelectContent className="bg-white z-50"><SelectItem value="C">C</SelectItem><SelectItem value="NC">NC</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name={`itens.${index}.impressao`} render={({ field }) => (<FormItem><FormLabel>Impressão</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="C/NC" /></SelectTrigger></FormControl><SelectContent className="bg-white z-50"><SelectItem value="C">C</SelectItem><SelectItem value="NC">NC</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name={`itens.${index}.aparencia`} render={({ field }) => (<FormItem><FormLabel>Aparência</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="C/NC" /></SelectTrigger></FormControl><SelectContent className="bg-white z-50"><SelectItem value="C">C</SelectItem><SelectItem value="NC">NC</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                 <FormField control={form.control} name={`itens.${index}.peso_amostras`} render={({ field }) => (<FormItem><FormLabel>Peso Amostras (g)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name={`itens.${index}.peso_medio`} render={({ field }) => (<FormItem><FormLabel>Peso Médio (g)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name={`itens.${index}.peso_status`} render={({ field }) => (<FormItem><FormLabel>Peso (Status)</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="C/NC" /></SelectTrigger></FormControl><SelectContent className="bg-white z-50"><SelectItem value="C">C</SelectItem><SelectItem value="NC">NC</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+               </div>
+               <FormField control={form.control} name={`itens.${index}.acao_corretiva`} render={({ field }) => (<FormItem><FormLabel>Ação Corretiva</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <Button type="button" variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => embRemove(index)}><Trash2 className="w-4 h-4" /></Button>
+            </Card>
+          ))}
+          <Button type="button" variant="outline" onClick={() => embAppend({})}><PlusCircle className="mr-2 h-4 w-4" />Adicionar Item</Button>
+          <FormMessage>{form.formState.errors.itens?.message}</FormMessage>
+        </>
+      case "checklist_manipuladores":
+        return <>
+          {commonFields}
+           <p className="text-sm font-medium">WIP: Checklist form is complex and needs specific grid implementation.</p>
+        </>
       default:
-        return commonFormFields;
+        return commonFields;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 mb-6">
-        <div className="flex items-center gap-4">
-          <Link to="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-          </Link>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">Criar Nova Ordem</h1>
-            <p className="text-sm text-gray-600">Preencha os campos para criar uma nova ordem de serviço.</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>Tipo de Ordem de Serviço</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select onValueChange={(value) => setFormType(value)} defaultValue={formType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo de ordem" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="higienizacao">Higienização e Resíduos</SelectItem>
-                <SelectItem value="recebimento">Recebimento de Matéria-Prima</SelectItem>
-                <SelectItem value="checklist">Checklist de Manipuladores</SelectItem>
-                <SelectItem value="pragas">Controle de Ocorrência de Pragas</SelectItem>
-                <SelectItem value="treinamento">Registro de Treinamento</SelectItem>
-                <SelectItem value="residuos">Retiradas de Resíduos</SelectItem>
-                <SelectItem value="temperatura">Registro de Temperatura e Umidade</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Detalhes da Ordem</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {renderFormFields()}
-                <Button type="submit" className="w-full" disabled={createOrderMut.isPending}>
-                  <Save className="mr-2 h-4 w-4" />
-                  {createOrderMut.isPending ? "Salvando..." : "Salvar"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Criar Nova Ordem de Serviço</h1>
+        <Link to="/orders">
+          <Button variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar para Ordens
+          </Button>
+        </Link>
       </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipo de Ordem de Serviço</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select onValueChange={(value) => setFormType(value)} defaultValue={formType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo de ordem" />
+                </SelectTrigger>
+                <SelectContent className="bg-white shadow-md z-50">
+                  {Object.entries(tipoOrdemLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Detalhes da Ordem</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {renderFormFields()}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Button type="submit" className="w-full" disabled={createOrderMut.isPending}>
+            <Save className="mr-2 h-4 w-4" />
+            {createOrderMut.isPending ? "Salvando..." : "Salvar"}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 };
