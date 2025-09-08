@@ -172,6 +172,7 @@ const CreateOS = () => {
   const onSubmit = (values) => {
     const { responsavel, setor, prioridade, prazo, ...details } = values;
     const payload = {
+      titulo: `${tipoOrdemLabels[formType]}`,
       tipo: tipoOrdemLabels[formType],
       responsavel,
       setor,
