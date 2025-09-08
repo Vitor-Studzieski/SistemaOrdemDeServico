@@ -124,7 +124,7 @@ const Charts = () => {
         const priorityDistribution = Object.entries(priorityCount).map(([name, value]) => ({
             name,
             value,
-            color: name === "critica" ? "#dc2626" : name === "alta" ? "#f59e0b" : "#16a34a"
+            color: name === "critica" ? "#dc2626" : name === "alta" ? "#f59e0b" : name === "media" ? "#ffff00" : "#16a34a"
         }));
 
         return { processoEvolution, statusDistribution, processComparison, priorityDistribution };
