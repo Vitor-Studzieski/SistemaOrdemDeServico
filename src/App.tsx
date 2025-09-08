@@ -20,6 +20,7 @@ import EditOrder from "./pages/EditOrder";
 import Users from "./pages/Users";
 import PopsManuais from "./pages/PopsManuais";
 import NotFound from "./pages/NotFound";
+import Charts from './pages/Charts';
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ function AppRoutes() {
           <Route path="/parameters" element={<Parameters />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/quality-control" element={<Indicators />} />
+          <Route path="/charts" element={<Charts />} />
           <Route path="/users" element={<Users />} />
           <Route path="/pops-manuais" element={<PopsManuais />} />
         </Route>

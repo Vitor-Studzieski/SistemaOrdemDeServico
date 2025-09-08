@@ -56,27 +56,27 @@ const Orders = () => {
         .update({ status: "concluida" })
         .eq("id", ordemId)
         .select("*");
-      
+
       if (error) {
         throw error;
       }
-      
+
       return data[0];
     },
     onSuccess: (updatedOrder) => {
       const allOrders = queryClient.getQueryData(["service_orders"]);
       const oldOrder = Array.isArray(allOrders) ? allOrders.find(o => o.id === updatedOrder.id) : undefined;
-      
+
       queryClient.setQueryData(["service_orders"], (oldData: any) => {
         if (!Array.isArray(oldData)) return oldData;
         return oldData.map((o) => (o.id === updatedOrder.id ? {
-          ...o, 
+          ...o,
           status: "concluida"
         } : o));
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ["service_orders"] });
-      
+
       toast({
         title: "Ordem concluída!",
         description: "A ordem de serviço foi marcada como concluída.",
@@ -161,7 +161,7 @@ const Orders = () => {
 
     const ws = XLSX.utils.aoa_to_sheet(dadosOrdem);
     const wb = XLSX.utils.book_new();
-    ws['!cols'] = [ { width: 25 }, { width: 20 }, { width: 15 }, { width: 10 } ];
+    ws['!cols'] = [{ width: 25 }, { width: 20 }, { width: 15 }, { width: 10 }];
     XLSX.utils.book_append_sheet(wb, ws, "Ordem de Serviço");
     const nomeArquivo = `OS_${ordem.id}_${ordem.titulo.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
     XLSX.writeFile(wb, nomeArquivo);
@@ -180,11 +180,16 @@ const Orders = () => {
   };
 
   const filteredOrdens = ordens.filter((ordem) => {
+    const titulo = ordem.titulo ?? "";
+    const responsavel = ordem.responsavel ?? "";
+    const setor = ordem.setor ?? "";
+    const status = ordem.status ?? "";
+    
     const matchesSearch = ordem.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          ordem.responsavel.toLowerCase().includes(searchTerm.toLowerCase());
+      ordem.responsavel.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "todas" || ordem.status === filterStatus;
     const matchesSetor = filterSetor === "todos" || ordem.setor === filterSetor;
-    
+
     return matchesSearch && matchesStatus && matchesSetor;
   });
 
@@ -229,7 +234,7 @@ const Orders = () => {
             <div className="flex flex-wrap gap-2">
               {ordem.parametros.map((param, index) => (
                 <div key={index} className="bg-green-50 border border-green-200 rounded px-3 py-1 text-sm">
-                  <span className="font-medium">{param.nome}:</span> {param.valor} 
+                  <span className="font-medium">{param.nome}:</span> {param.valor}
                   <span className="text-gray-500 ml-1">({param.limite})</span>
                 </div>
               ))}
@@ -239,18 +244,18 @@ const Orders = () => {
 
         {/* Ações */}
         <div className="flex flex-col sm:flex-row justify-end gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="w-full sm:w-auto"
             onClick={() => handleVisualizarOrdem(ordem.id)}
           >
             <Eye className="w-4 h-4 mr-1" />
             Visualizar
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="w-full sm:w-auto"
             onClick={() => handleEditarOrdem(ordem.id)}
           >
@@ -258,9 +263,9 @@ const Orders = () => {
             Editar
           </Button>
           {ordem.status === 'concluida' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => downloadOrdemPlanilha(ordem)}
               className="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
             >
@@ -269,8 +274,8 @@ const Orders = () => {
             </Button>
           )}
           {(ordem.status === 'pendente' || ordem.status === 'atrasada') && (
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
               onClick={() => handleConcluirOrdem(ordem.id)}
               disabled={concluirMut.isPending}

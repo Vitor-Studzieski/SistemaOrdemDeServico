@@ -8,7 +8,8 @@ import {
   Settings,
   LogOut,
   Plus,
-  BookOpen
+  BookOpen,
+  LucideBarChartHorizontal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthProvider, useAuth } from "@/components/contexts/AuthContext";
@@ -55,10 +56,16 @@ const items = [
     icon: BarChart3,
   },
   {
+    title: "Gráficos dos Processos",
+    url: "/charts",
+    icon: LucideBarChartHorizontal,
+  },
+  {
     title: "Usuários",
     url: "/users",
     icon: Users,
   },
+
   {
     title: "POPs e Manuais",
     url: "/pops-manuais",
