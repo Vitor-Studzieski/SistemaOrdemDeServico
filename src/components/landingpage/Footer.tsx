@@ -9,8 +9,6 @@ export function Footer() {
   return (
     <footer>
       {/* Seção "Siga-nos no Instagram" - Imagem 5 */}
-      {/* NOTE: O erro "The access token could not be decrypted" é de API e não do front-end. 
-                 Vamos apenas criar o layout. */}
       <div className="bg-red-800 text-white py-16 text-center"> {/* Use 'bg-destructive' se for uma cor customizada */}
         <h2 className="text-3xl md:text-4xl font-bold mb-4">Siga-nos no Instagram</h2>
         {/* A mensagem de erro da API real não será implementada aqui, mas sim no backend */}
@@ -51,8 +49,8 @@ export function Footer() {
             <h3 className="text-xl font-semibold mb-4">ABERTO</h3>
             <ul className="space-y-2">
               <li>SEGUNDA A SEXTA</li>
-              <li>11:00 AM - 3:00 PM</li>
-              <li>4:30 PM - 10:00 PM</li>
+              <li>11:00 - 15:00 </li>
+              <li>16:30 - 22:00 </li>
             </ul>
           </div>
         </div>

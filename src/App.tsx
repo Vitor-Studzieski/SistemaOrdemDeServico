@@ -14,7 +14,6 @@ import CreateOS from "./pages/CreateOS";
 import Orders from "./pages/Orders";
 import Parameters from "./pages/Parameters";
 import Reports from "./pages/Reports";
-import Indicators from "./pages/Indicators";
 import ViewOrder from "./pages/ViewOrder";
 import EditOrder from "./pages/EditOrder";
 import Users from "./pages/Users";
@@ -52,7 +51,6 @@ function AppRoutes() {
           <Route path="/edit-order/:id" element={<EditOrder />} />
           <Route path="/parameters" element={<Parameters />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/quality-control" element={<Indicators />} />
           <Route path="/charts" element={<Charts />} />
           <Route path="/users" element={<Users />} />
           <Route path="/pops-manuais" element={<PopsManuais />} />

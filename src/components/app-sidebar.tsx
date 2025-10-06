@@ -51,11 +51,6 @@ const items = [
     icon: BarChart3,
   },
   {
-    title: "Indicadores",
-    url: "/quality-control",
-    icon: BarChart3,
-  },
-  {
     title: "Gráficos dos Processos",
     url: "/charts",
     icon: LucideBarChartHorizontal,
